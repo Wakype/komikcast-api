@@ -4,6 +4,8 @@ const BASE_URL = process.env.MANGA_BASE_URL!;
 // Optional: URL of the Cloudflare Worker proxy
 // e.g., "https://your-worker.your-subdomain.workers.dev"
 const PROXY_URL = process.env.SCRAPER_PROXY_URL;
+// Optional: Secret key to bypass rate limiting on the CF Worker
+const BYPASS_SECRET = process.env.BYPASS_SECRET;
 
 const defaultHeaders: Record<string, string> = {
   "User-Agent":
@@ -37,7 +39,17 @@ async function rawFetch(path: string): Promise<Response> {
   if (PROXY_URL) {
     // Route through Cloudflare Worker proxy
     const proxyUrl = `${PROXY_URL.replace(/\/$/, "")}/?url=${encodeURIComponent(directUrl)}`;
-    const response = await fetch(proxyUrl, { cache: "no-store" });
+    const proxyHeaders: Record<string, string> = {};
+
+    // Send bypass key so our own API is never rate-limited
+    if (BYPASS_SECRET) {
+      proxyHeaders["X-Bypass-Key"] = BYPASS_SECRET;
+    }
+
+    const response = await fetch(proxyUrl, {
+      headers: proxyHeaders,
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       throw new Error(

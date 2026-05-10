@@ -10,17 +10,60 @@
  * Deploy this worker to your Cloudflare account (free tier: 100K req/day).
  *
  * Usage: GET https://your-worker.workers.dev/?url=<encoded target url>
+ *
+ * Environment Variables (set in Worker Settings → Variables):
+ *   - BYPASS_SECRET: A secret key that allows unlimited access (no rate limit)
+ *
+ * To bypass rate limit, send the secret as a header:
+ *   X-Bypass-Key: <your BYPASS_SECRET value>
  */
 
+// ─── Configuration ──────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
-  "https://komikcast-api-six.vercel.app",
+  // Add your own Vercel deployment URL here, e.g.:
+  // "https://your-project.vercel.app",
   "http://localhost:3000",
 ];
 
 const TARGET_HOST = "be.komikcast.cc";
 
+// Rate limit: max requests per window per IP
+const RATE_LIMIT_MAX = 60; // max 60 requests
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // per 1 minute
+
+// ─── In-memory rate limit store (per Worker isolate) ────────────
+const rateLimitMap = new Map();
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  // Clean up old entries periodically (every 100 checks)
+  if (Math.random() < 0.01) {
+    for (const [key, val] of rateLimitMap) {
+      if (now - val.windowStart > RATE_LIMIT_WINDOW_MS) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    // New window
+    rateLimitMap.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return true;
+  }
+
+  return false;
+}
+
+// ─── Main Handler ───────────────────────────────────────────────
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, {
@@ -36,7 +79,7 @@ export default {
         JSON.stringify({ error: "Missing ?url= parameter" }),
         {
           status: 400,
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...corsHeaders(request) },
         },
       );
     }
@@ -49,17 +92,48 @@ export default {
           JSON.stringify({ error: "Target host not allowed" }),
           {
             status: 403,
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...corsHeaders(request) },
           },
         );
       }
     } catch {
       return new Response(JSON.stringify({ error: "Invalid URL" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...corsHeaders(request) },
       });
     }
 
+    // ─── Bypass check (secret key from header) ──────────────
+    const bypassKey = request.headers.get("X-Bypass-Key");
+    const hasValidBypass =
+      env.BYPASS_SECRET && bypassKey && bypassKey === env.BYPASS_SECRET;
+
+    // ─── Rate limiting (skip if bypass is valid) ────────────
+    if (!hasValidBypass) {
+      const clientIp =
+        request.headers.get("CF-Connecting-IP") ||
+        request.headers.get("X-Forwarded-For") ||
+        "unknown";
+
+      if (isRateLimited(clientIp)) {
+        return new Response(
+          JSON.stringify({
+            error: "Rate limit exceeded",
+            message: `Max ${RATE_LIMIT_MAX} requests per minute. Please slow down.`,
+          }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": "60",
+              ...corsHeaders(request),
+            },
+          },
+        );
+      }
+    }
+
+    // ─── Proxy the request ──────────────────────────────────
     try {
       const response = await fetch(targetUrl, {
         method: "GET",
@@ -107,6 +181,7 @@ export default {
   },
 };
 
+// ─── CORS Helper ────────────────────────────────────────────────
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
@@ -116,7 +191,7 @@ function corsHeaders(request) {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-Bypass-Key",
     "Access-Control-Max-Age": "86400",
   };
 }
