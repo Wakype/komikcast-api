@@ -31,13 +31,62 @@ const endpoints = [
       { name: "chapterId", placeholder: "e.g., 132" },
     ],
   },
+  {
+    id: "filter",
+    title: "Filter Komik",
+    method: "GET",
+    path: "/api/filter?page=[page]&take=[take]&sort=[sort]&sortOrder=[sortOrder]&status=[status]&format=[format]&genreIds=[genreIds]&search=[search]",
+    description:
+      "Filter and search komik. Status: ongoing, completed, hiatus, cancelled. Format: manga, manhwa, manhua, webtoon. Optional filters can be left empty.",
+    params: [
+      { name: "page", placeholder: "e.g., 1" },
+      { name: "take", placeholder: "e.g., 12" },
+      {
+        name: "sort",
+        placeholder: "latest | popularity | rating",
+        options: ["", "latest", "popularity", "rating"],
+      },
+      {
+        name: "sortOrder",
+        placeholder: "desc | asc",
+        options: ["", "desc", "asc"],
+      },
+      {
+        name: "status",
+        placeholder: "Select Status",
+        options: ["ongoing", "completed", "hiatus", "cancelled"],
+        multi: true,
+      },
+      {
+        name: "format",
+        placeholder: "Select Format",
+        options: ["manga", "manhwa", "manhua", "mangatoon"],
+        multi: true,
+      },
+      {
+        name: "genreIds",
+        placeholder: "Select Genres",
+        options: [],
+        multi: true,
+      },
+      { name: "search", placeholder: "Search title/nativeTitle" },
+    ],
+  },
+  {
+    id: "genres",
+    title: "Genres List",
+    method: "GET",
+    path: "/api/genres",
+    description: "Fetch all available genres for filtering.",
+    params: [],
+  },
 ];
 
 // Helper syntax highlighting JSON
 const syntaxHighlight = (json: any) => {
   if (!json) return "";
   const jsonStr =
-    typeof json !== "string" ? JSON.stringify(json, null, 2) : json;
+    typeof json === "string" ? json : JSON.stringify(json, null, 2);
   return jsonStr.replaceAll(
     /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
     (match) => {
@@ -63,10 +112,19 @@ export default function ApiDocs() {
   const [paramValues, setParamValues] = useState<Record<string, string>>({
     slug: "archamge-restaurant",
     chapterId: "132",
+    page: "1",
+    take: "12",
+    sort: "latest",
+    sortOrder: "desc",
+    status: "",
+    format: "",
+    genreIds: "",
+    search: "",
   });
   const [response, setResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [genresOptions, setGenresOptions] = useState<string[]>([]);
 
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -76,9 +134,25 @@ export default function ApiDocs() {
 
   // Set Base URL dinamis berdasarkan environment browser
   useEffect(() => {
-    if (typeof globalThis.window !== "undefined") {
+    if (globalThis.window !== undefined) {
       setBaseUrl(globalThis.location.origin);
     }
+  }, []);
+
+  // Fetch genres
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const res = await fetch("/api/genres");
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data)) {
+          setGenresOptions(json.data.map((g: any) => g.data.name));
+        }
+      } catch (err) {
+        console.error("Failed to fetch genres", err);
+      }
+    };
+    fetchGenres();
   }, []);
 
   const activeEndpoint = endpoints.find((e) => e.id === activeEndpointId)!;
@@ -87,28 +161,58 @@ export default function ApiDocs() {
     setParamValues((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Helper untuk membuat URL penuh beserta parameter yang sudah diisi
-  const getFullUrl = () => {
-    let url = activeEndpoint.path;
-    for (const param of activeEndpoint.params) {
-      const val = paramValues[param.name];
-      if (val) {
-        url = url.replace(`[${param.name}]`, encodeURIComponent(val));
+  const handleMultiSelectToggle = (name: string, option: string) => {
+    setParamValues((prev) => {
+      const currentVal = prev[name] || "";
+      const selectedArr = currentVal ? currentVal.split(",") : [];
+      if (selectedArr.includes(option)) {
+        const newArr = selectedArr.filter((val) => val !== option);
+        return { ...prev, [name]: newArr.join(",") };
+      } else {
+        return { ...prev, [name]: [...selectedArr, option].join(",") };
       }
-    }
-    return `${baseUrl}${url}`;
+    });
   };
 
   // Helper untuk membuat path relatif beserta parameter
   const getRelativeUrl = () => {
-    let url = activeEndpoint.path;
+    let pathPart = activeEndpoint.path.split("?")[0];
+    let queryPart = activeEndpoint.path.split("?")[1] || "";
+
     for (const param of activeEndpoint.params) {
       const val = paramValues[param.name];
       if (val) {
-        url = url.replace(`[${param.name}]`, encodeURIComponent(val));
+        pathPart = pathPart.replace(`[${param.name}]`, encodeURIComponent(val));
+
+        if ((param as any).multi) {
+          // Format comma-separated values into multiple query parameters
+          // Example: [status] -> ongoing&status=completed
+          const encodedVal = val
+            .split(",")
+            .map((v) => encodeURIComponent(v).replaceAll("%20", "+"))
+            .join(`&${param.name}=`);
+          queryPart = queryPart.replace(`[${param.name}]`, encodedVal);
+        } else {
+          // Use + instead of %20 for spaces in query string parameters
+          let encodedVal = encodeURIComponent(val).replaceAll("%20", "+");
+          queryPart = queryPart.replace(`[${param.name}]`, encodedVal);
+        }
       }
     }
-    return url;
+
+    if (queryPart) {
+      queryPart = queryPart
+        .split("&")
+        .filter((part) => !part.includes("["))
+        .join("&");
+    }
+
+    return queryPart ? `${pathPart}?${queryPart}` : pathPart;
+  };
+
+  // Helper untuk membuat URL penuh beserta parameter yang sudah diisi
+  const getFullUrl = () => {
+    return `${baseUrl}${getRelativeUrl()}`;
   };
 
   const handleCopyResponse = () => {
@@ -131,9 +235,19 @@ export default function ApiDocs() {
     setError(null);
     setResponse(null);
 
-    // Validasi parameter kosong
+    // Validasi parameter kosong (kecuali yang opsional)
     for (const param of activeEndpoint.params) {
-      if (!paramValues[param.name]) {
+      if (
+        !paramValues[param.name] &&
+        ![
+          "status",
+          "format",
+          "genreIds",
+          "search",
+          "sort",
+          "sortOrder",
+        ].includes(param.name)
+      ) {
         setError(`Parameter [${param.name}] is required`);
         setIsLoading(false);
         return;
@@ -382,20 +496,81 @@ export default function ApiDocs() {
                     <div key={param.name} className="flex flex-col gap-2">
                       <label className="text-sm font-medium text-zinc-400 flex items-center gap-1">
                         {param.name}
-                        <span className="text-rose-400/80" title="Required">
-                          *
-                        </span>
+                        {![
+                          "status",
+                          "format",
+                          "genreIds",
+                          "search",
+                          "sort",
+                          "sortOrder",
+                        ].includes(param.name) && (
+                          <span className="text-rose-400/80" title="Required">
+                            *
+                          </span>
+                        )}
                       </label>
                       <div className="relative group">
-                        <input
-                          type="text"
-                          placeholder={param.placeholder}
-                          value={paramValues[param.name] || ""}
-                          onChange={(e) =>
-                            handleParamChange(param.name, e.target.value)
-                          }
-                          className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm shadow-inner"
-                        />
+                        {(param as any).multi ? (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {(
+                              (param.name === "genreIds"
+                                ? genresOptions
+                                : param.options) || []
+                            ).map((opt: string) => {
+                              const isSelected = (paramValues[param.name] || "")
+                                .split(",")
+                                .includes(opt);
+                              return (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() =>
+                                    handleMultiSelectToggle(param.name, opt)
+                                  }
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                                    isSelected
+                                      ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.2)]"
+                                      : "bg-black/50 border-white/10 text-zinc-400 hover:border-white/20 hover:text-zinc-300"
+                                  }`}
+                                >
+                                  {opt}
+                                </button>
+                              );
+                            })}
+                            {param.name === "genreIds" &&
+                              genresOptions.length === 0 && (
+                                <span className="text-xs text-zinc-500 py-1">
+                                  Loading genres...
+                                </span>
+                              )}
+                          </div>
+                        ) : param.options ? (
+                          <select
+                            value={paramValues[param.name] || ""}
+                            onChange={(e) =>
+                              handleParamChange(param.name, e.target.value)
+                            }
+                            className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 text-white focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm shadow-inner appearance-none"
+                          >
+                            {param.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt === ""
+                                  ? "Any"
+                                  : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder={param.placeholder}
+                            value={paramValues[param.name] || ""}
+                            onChange={(e) =>
+                              handleParamChange(param.name, e.target.value)
+                            }
+                            className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm shadow-inner"
+                          />
+                        )}
                       </div>
                     </div>
                   ))}

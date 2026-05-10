@@ -265,3 +265,28 @@ export interface KomikcastChapterContentItem {
 
 export type KomikcastChapterContentResponse =
   KomikcastResponse<KomikcastChapterContentItem>;
+
+export interface FilterKomik {
+  title: string;
+  slug: string;
+  synopsis: string;
+  cover: string;
+  rating: string;
+  type: string;
+  isHot: boolean;
+  isRecommended: boolean;
+  chapters: PreviewChapter[];
+  createdAt: string;
+  updatedAt: string;
+  author: string;
+  format: string;
+  nativeTitle: string;
+  releaseDate: string;
+  backgroundImage: string;
+  genres: KomikcastGenre[];
+  status: string;
+  totalChapters: string;
+}
+
+export type KomikcastFilterResponse = KomikcastResponse;
+export type KomikcastGenresResponse = KomikcastResponse<KomikcastGenre[]>;
