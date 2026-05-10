@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ─── Configuration ──────────────────────────────────────────────
-const RATE_LIMIT_MAX = 30; // max requests per window
+const RATE_LIMIT_MAX = 60; // max requests per window
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 
 // ─── In-memory rate limit store ─────────────────────────────────
@@ -29,7 +29,11 @@ function isRateLimited(ip: string): {
 
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
     rateLimitMap.set(ip, { count: 1, windowStart: now });
-    return { limited: false, remaining: RATE_LIMIT_MAX - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+    return {
+      limited: false,
+      remaining: RATE_LIMIT_MAX - 1,
+      resetIn: RATE_LIMIT_WINDOW_MS,
+    };
   }
 
   entry.count++;
@@ -42,7 +46,7 @@ function isRateLimited(ip: string): {
   return { limited: false, remaining: RATE_LIMIT_MAX - entry.count, resetIn };
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only rate-limit API routes (not frontend pages, not the proxy)
@@ -83,7 +87,7 @@ export function middleware(request: NextRequest) {
           "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
           "X-RateLimit-Remaining": "0",
         },
-      }
+      },
     );
   }
 

@@ -6,9 +6,14 @@
 
 ## Project Overview
 
-This is a **manga scraping REST API** built with Next.js App Router. It scrapes manga data (titles, chapters, images) from external websites using `axios` + `cheerio`, exposes clean JSON endpoints, and caches responses to stay within **Vercel Hobby Plan** limits. 
+This is a **manga scraping REST API** built with Next.js 16 App Router. It scrapes manga data (titles, chapters, images) from external websites using `cheerio` for HTML parsing and **native `fetch()`** for HTTP requests. All endpoints return clean JSON and responses are aggressively cached to stay within **Vercel Hobby Plan** limits.
 
-It includes a simple but modern **Frontend UI** exclusively for API Documentation (Swagger/Dashboard style) and legal pages, but the core focus remains the scraping API.
+It includes:
+- **REST API** — The core scraping endpoints
+- **API Explorer** — A premium dashboard UI at `/api` for testing endpoints
+- **Legal Pages** — Terms of Service, Privacy Policy, DMCA at `/legal`
+- **Cloudflare Worker Proxy** — Bypasses Cloudflare IP blocking on Vercel
+- **Rate Limiting** — Per-IP rate limiting with bypass key support via `proxy.ts`
 
 ---
 
@@ -28,9 +33,11 @@ pnpm build          # or: npm run build
 
 ## Tech Stack
 
-- Next.js (App Router)
+- Next.js 16 (App Router)
 - TypeScript (strict mode)
-- Axios + Cheerio (scraping)
+- Cheerio (HTML parsing)
+- Native `fetch()` (HTTP requests — no axios)
+- Tailwind CSS (frontend UI only)
 - ESLint
 
 ---
@@ -41,32 +48,42 @@ pnpm build          # or: npm run build
 
 ```
 ├── app/
-│   └── api/
-│       ├── manga/route.ts
-│       ├── manga/[slug]/route.ts
-│       ├── manga/chapter/[chapterId]/route.ts
-│       ├── genre/route.ts
-│       ├── genre/[slug]/route.ts
-│       ├── latest/route.ts
-│       ├── popular/route.ts
-│       └── search/route.ts
+│   ├── page.tsx                            # Landing page
+│   ├── layout.tsx                          # Root layout (analytics, fonts)
+│   ├── globals.css                         # Global styles
+│   ├── api/
+│   │   ├── page.tsx                        # API Explorer UI
+│   │   ├── home/route.ts                   # Home data endpoint
+│   │   ├── komik/[slug]/route.ts           # Manga detail endpoint
+│   │   ├── komik/[slug]/[chapterId]/route.ts # Chapter images endpoint
+│   │   └── proxy/route.ts                  # Image hotlink bypass proxy
+│   ├── legal/
+│   │   └── page.tsx                        # Terms, Privacy, DMCA
+│   └── template/
+│       └── page.tsx                        # Template/example page
+├── cloudflare-worker/
+│   └── worker.js                           # CF Worker proxy (deploy separately)
 ├── libs/
-│   └── scraper.ts
+│   └── scraper.ts                          # fetchAPI(), fetchPage() — scraper core
 ├── types/
-│   └── manga.ts
-└── utils/
-    ├── response.ts
-    └── cache.ts
+│   └── manga.ts                            # Shared TypeScript interfaces
+├── utils/
+│   ├── response.ts                         # ok(), err() response helpers
+│   └── cache.ts                            # cacheHeader(), CACHE_TTL constants
+├── proxy.ts                                # Rate limiting (Next.js proxy convention)
+├── .env.example                            # Environment variable template
+└── .env.local                              # Local env vars (git-ignored)
 ```
 
 ### Directory Responsibilities
 
-| Directory  | Purpose                                                      |
-| ---------- | ------------------------------------------------------------ |
-| `app/api/` | Route handlers only — no business logic                      |
-| `libs/`    | External integrations — axios instance, `fetchPage()`        |
-| `types/`   | Shared TypeScript interfaces                                 |
-| `utils/`   | Pure helpers — `ok()`, `err()`, `cacheHeader()`, `CACHE_TTL` |
+| Directory             | Purpose                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| `app/api/`            | Route handlers only — no business logic                        |
+| `cloudflare-worker/`  | Standalone CF Worker proxy (deployed to Cloudflare, not Vercel)|
+| `libs/`               | External integrations — `fetchAPI()`, `fetchPage()`            |
+| `types/`              | Shared TypeScript interfaces                                   |
+| `utils/`              | Pure helpers — `ok()`, `err()`, `cacheHeader()`, `CACHE_TTL`  |
 
 Selector/scraping logic belongs in the route files, not in `libs/`.
 
@@ -93,18 +110,25 @@ Never write `@/src/...` — there is no `src/` directory.
 
 ## API Endpoints
 
-| Method | Endpoint                         | Description                                      | Cache TTL       |
-| ------ | -------------------------------- | ------------------------------------------------ | --------------- |
-| GET    | `/api/home`                      | Home data (banner, popular, latest, newest)      | SHORT (5 min)   |
-| GET    | `/api/komik/[slug]`              | Manga detail + chapters                          | MEDIUM (30 min) |
-| GET    | `/api/komik/[slug]/[chapterId]`  | Chapter images & navigation                      | STATIC (7 days) |
-| GET    | `/api/proxy?url=...`             | Image hotlink bypass proxy                       | STATIC (1 year) |
+| Method | Endpoint                         | Description                                 | Cache TTL       |
+| ------ | -------------------------------- | ------------------------------------------- | --------------- |
+| GET    | `/api/home`                      | Home data (banner, popular, latest, newest) | SHORT (5 min)   |
+| GET    | `/api/komik/[slug]`              | Manga detail + chapters                     | MEDIUM (30 min) |
+| GET    | `/api/komik/[slug]/[chapterId]`  | Chapter images & navigation                 | STATIC (7 days) |
+| GET    | `/api/proxy?url=...`             | Image hotlink bypass proxy                  | STATIC (1 year) |
 
 All responses (except `/api/proxy` which returns raw images):
 
 ```json
 { "status": 200, "message": "Success", "data": { ... } }
 ```
+
+### Rate Limiting
+
+All API routes (except `/api/proxy`) are rate-limited via `proxy.ts`:
+- **60 requests per minute** per IP
+- Bypass with header: `X-API-Key: <BYPASS_SECRET>`
+- Rate limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`
 
 ---
 
@@ -123,6 +147,21 @@ return ok(data, {
 ### ❌ NEVER: Add `export const dynamic = "force-dynamic"`
 
 This disables all caching and hammers the serverless invocation limit. It is forbidden in this codebase.
+
+---
+
+## Scraper Architecture
+
+The scraper uses a **two-layer proxy** system to bypass Cloudflare:
+
+```
+Vercel API → Cloudflare Worker → Target Site
+```
+
+- `libs/scraper.ts` calls the CF Worker via `SCRAPER_PROXY_URL`
+- The CF Worker runs inside Cloudflare's trusted network (no IP blocking)
+- If `SCRAPER_PROXY_URL` is not set, requests go directly (works locally)
+- `BYPASS_SECRET` is sent as `X-Bypass-Key` header to skip CF Worker rate limits
 
 ---
 
@@ -160,17 +199,19 @@ export async function GET(req: NextRequest) {
 1. **No `Response.json()` directly** — always use `ok()` or `err()` from `@/utils/response`
 2. **All types from `@/types/manga`** — no inline type definitions in route files
 3. **Every selector needs a `// TODO:` comment** noting it depends on the target site's HTML
-4. **All list endpoints support `?page=N`** and return `PaginatedResponse<T>`
-5. **No `any` type** unless truly unavoidable — add a comment explaining why
-6. **Always `console.error("[route-name]", e)`** inside catch blocks before returning `err()`
+4. **No `any` type** unless truly unavoidable — add a comment explaining why
+5. **Always `console.error("[route-name]", e)`** inside catch blocks before returning `err()`
+6. **No axios** — use native `fetch()` via `libs/scraper.ts`
 
 ---
 
 ## Environment Variables
 
-| Variable         | Required | Description                       |
-| ---------------- | -------- | --------------------------------- |
-| `MANGA_BASE_URL` | ✅       | Base URL of the target manga site |
+| Variable           | Required | Description                                        |
+| ------------------ | -------- | -------------------------------------------------- |
+| `MANGA_BASE_URL`   | ✅       | Base URL of the target manga site                  |
+| `SCRAPER_PROXY_URL`| ⚠️       | CF Worker proxy URL (required for Vercel deploy)   |
+| `BYPASS_SECRET`    | ❌       | Secret key to bypass rate limiting on API & Worker |
 
 Copy `.env.example` → `.env.local`. Restart dev server after changes.
 
@@ -198,19 +239,32 @@ All types live in `types/manga.ts`:
 
 ## Common Pitfalls
 
-| Problem                             | Fix                                                         |
-| ----------------------------------- | ----------------------------------------------------------- |
-| Empty arrays from scraper           | Site HTML changed — inspect and update selectors            |
-| 403 / blocked                       | Update `User-Agent` in `libs/scraper.ts`                    |
-| `MANGA_BASE_URL` undefined          | Check `.env.local` exists, restart dev server               |
-| Every request hits the live scraper | `cacheHeader()` missing, or `force-dynamic` was added       |
-| Path `@/src/...` not found          | No `src/` directory — use `@/libs/`, `@/types/`, `@/utils/` |
+| Problem                             | Fix                                                          |
+| ----------------------------------- | ------------------------------------------------------------ |
+| Empty arrays from scraper           | Site HTML changed — inspect and update selectors             |
+| 403 / blocked on Vercel             | Deploy CF Worker and set `SCRAPER_PROXY_URL`                 |
+| 403 / blocked locally               | Update `User-Agent` in `libs/scraper.ts`                     |
+| `MANGA_BASE_URL` undefined          | Check `.env.local` exists, restart dev server                |
+| Every request hits the live scraper | `cacheHeader()` missing, or `force-dynamic` was added        |
+| Path `@/src/...` not found          | No `src/` directory — use `@/libs/`, `@/types/`, `@/utils/`  |
+| Middleware deprecation warning      | Use `proxy.ts` not `middleware.ts` (Next.js 16)              |
 
-<!-- ---
+---
 
-## Deployment (Vercel)
+## Deployment
 
-Set `MANGA_BASE_URL` in Vercel → Project → Settings → Environment Variables. No other config needed. -->
+### Vercel
+Set environment variables in Vercel → Project → Settings → Environment Variables:
+- `MANGA_BASE_URL`
+- `SCRAPER_PROXY_URL`
+- `BYPASS_SECRET`
+
+### Cloudflare Worker
+Deploy `cloudflare-worker/worker.js` to Cloudflare Workers:
+1. Create Worker at dash.cloudflare.com
+2. Paste the worker code
+3. Set `BYPASS_SECRET` env variable in Worker Settings → Variables
+4. Note the Worker URL and set it as `SCRAPER_PROXY_URL` in Vercel
 
 ---
 
@@ -219,6 +273,6 @@ Set `MANGA_BASE_URL` in Vercel → Project → Settings → Environment Variable
 Do not add without explicit instruction:
 
 - Database / ORM
-- Authentication
+- Authentication (beyond API key bypass)
 - `export const dynamic = "force-dynamic"`
 - A `src/` directory
