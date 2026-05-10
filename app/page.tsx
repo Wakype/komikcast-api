@@ -45,7 +45,7 @@ export default function Home() {
             Check API
           </Link>
           <a
-            href="https://github.com/Wakype"
+            href="https://github.com/Wakype/komikcast-api"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 h-12 px-8 rounded-full bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-colors"
