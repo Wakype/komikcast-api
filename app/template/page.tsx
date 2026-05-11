@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 
-export default function Home() {
+export default function TemplateGenerator() {
   const [apiUrl, setApiUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -40,7 +41,10 @@ export default function Home() {
           const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
             ? key
             : `"${key}"`;
-          result += `${indent}${formattedKey}: ${getTypeTemplate(value[key], indentLevel + 1)},\n`;
+          result += `${indent}${formattedKey}: ${getTypeTemplate(
+            value[key],
+            indentLevel + 1,
+          )},\n`;
         }
       }
       result += `${closingIndent}}`;
@@ -54,17 +58,22 @@ export default function Home() {
   // Handle the manual generation process
   const handleGenerate = () => {
     setError(null);
-    if (!inputJson.trim()) {
-      setOutputTemplate("");
-      return;
-    }
+
+    // Use default placeholder if empty to show functionality
+    const defaultJson = '{\n  "message": "Hello World",\n  "status": 200\n}';
+    const jsonToParse = inputJson.trim() ? inputJson : defaultJson;
 
     try {
-      const parsedJson = JSON.parse(inputJson);
+      const parsedJson = JSON.parse(jsonToParse);
       const generatedTemplate = getTypeTemplate(parsedJson);
+
+      if (!inputJson.trim()) {
+        setInputJson(defaultJson);
+      }
+
       setOutputTemplate(generatedTemplate);
-    } catch (err) {
-      setError("Invalid JSON format. Please check your input.");
+    } catch (err: any) {
+      setError(`Invalid JSON: ${err.message || "Please check your input"}`);
       setOutputTemplate("");
     }
   };
@@ -78,7 +87,9 @@ export default function Home() {
     setError(null);
 
     try {
-      const response = await fetch(apiUrl);
+      // Use dev-proxy to bypass CORS and Cloudflare blocks
+      const proxyUrl = `/api/dev-proxy?url=${encodeURIComponent(apiUrl)}`;
+      const response = await fetch(proxyUrl);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -109,22 +120,22 @@ export default function Home() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  // Simple syntax highlighter without external libraries
+  // Simple syntax highlighter tailored for the minimalist dark theme
   const highlightedOutput = useMemo(() => {
     if (!outputTemplate) return "";
     return (
       outputTemplate
         // Highlight string properties (keys) with quotes
-        .replace(/"([^"]+)"(?=:)/g, '<span class="text-blue-400">"$1"</span>')
+        .replace(/"([^"]+)"(?=:)/g, '<span class="text-zinc-300">"$1"</span>')
         // Highlight string properties (keys) without quotes
         .replace(
           /([a-zA-Z_$][a-zA-Z0-9_$]*)(?=:)/g,
-          '<span class="text-blue-400">$1</span>',
+          '<span class="text-zinc-300">$1</span>',
         )
         // Highlight primitive types
         .replace(
           /:\s*(string|number|boolean|any|null)((\[])*)/g,
-          ': <span class="text-yellow-300">$1$2</span>',
+          ': <span class="text-emerald-400">$1$2</span>',
         )
         // Highlight brackets and braces
         .replace(/([{}[\],])/g, '<span class="text-zinc-500">$1</span>')
@@ -132,82 +143,102 @@ export default function Home() {
   }, [outputTemplate]);
 
   return (
-    // FIX: Removed overflow-x-hidden from the main wrapper to prevent double page scrollbars
-    <div className="flex flex-col items-center justify-start min-h-screen bg-[#0a0a0a] text-white relative py-16">
-      {/* Custom Scrollbar Styles */}
+    <div className="flex flex-col items-center justify-start min-h-screen bg-zinc-950 text-zinc-50 relative pt-16 font-sans selection:bg-zinc-800">
+      {/* Custom Scrollbar Styles for Textarea and Pre */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
         .custom-scrollbar {
           scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.02);
+          scrollbar-color: #3f3f46 transparent;
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
           height: 8px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.02);
-          border-radius: 8px;
+          background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
+          background: #3f3f46;
+          border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
+          background: #52525b;
         }
       `,
         }}
       />
 
-      {/* FIX: Background Gradients wrapped in an overflow-hidden container to prevent layout shifting */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px]" />
-      </div>
+      <main className="z-10 flex flex-col items-center px-6 max-w-5xl w-full">
+        {/* Top Navigation / Back Button */}
+        <div className="w-full flex justify-start mb-8">
+          <Link
+            href="/"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 bg-zinc-900 border border-zinc-800 rounded-md transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Home
+          </Link>
+        </div>
 
-      <main className="z-10 flex flex-col items-center text-center px-4 max-w-6xl w-full">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 text-sm font-medium border border-white/10 rounded-full bg-white/5 backdrop-blur-sm text-zinc-300">
-          <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+        {/* Status Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-xs font-medium border border-zinc-800 rounded-full bg-zinc-900/50 text-zinc-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-500"></span>
+          </span>
           <span>Fast Type Inference</span>
         </div>
 
-        {/* Heading */}
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent">
-          JSON to Template
-        </h1>
-
-        {/* Description */}
-        <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl leading-relaxed">
-          Instantly convert your JSON responses into strictly typed structures.
-          Paste your payload below or fetch directly from an API endpoint.
-        </p>
+        {/* Heading Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-zinc-100">
+            JSON to Template
+          </h1>
+          <p className="text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
+            Instantly convert your JSON responses into strictly typed
+            structures. Paste your payload below or fetch directly from an API
+            endpoint.
+          </p>
+        </div>
 
         {/* API Fetch Section */}
-        <div className="w-full mb-8 flex flex-col gap-3 text-left">
-          <label className="text-sm font-semibold text-zinc-300 ml-1">
+        <div className="w-full mb-8 flex flex-col gap-2 text-left">
+          <label className="text-sm font-medium text-zinc-300">
             Option 1: Fetch from API
           </label>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="url"
               placeholder="https://api.example.com/data"
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleFetchApi()}
-              className="flex-1 px-5 py-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm focus:border-white/20 focus:bg-white/10 outline-none transition-colors font-mono text-sm text-zinc-300 placeholder:text-zinc-600"
+              className="flex-1 px-4 py-2.5 rounded-md bg-zinc-900 border border-zinc-800 focus:border-zinc-600 focus:bg-zinc-800/50 outline-none transition-colors font-mono text-sm text-zinc-300 placeholder:text-zinc-600"
             />
             <button
               onClick={handleFetchApi}
               disabled={isLoading}
-              className="px-8 py-3 rounded-2xl bg-white text-black font-semibold hover:bg-zinc-200 disabled:bg-zinc-500 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 min-w-[140px]"
+              className="h-11 px-6 rounded-md bg-zinc-100 text-zinc-950 font-medium hover:bg-white disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 min-w-[140px]"
             >
               {isLoading ? (
                 <>
                   <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-black"
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -234,23 +265,24 @@ export default function Home() {
             </button>
           </div>
           {fetchError && (
-            <span className="text-red-400 text-xs font-medium ml-1">
+            <span className="text-red-400 text-xs font-medium">
               {fetchError}
             </span>
           )}
         </div>
 
-        {/* Input / Output Workspace */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left mb-8">
+        {/* Workspace: Input & Output */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left mb-6">
           {/* Input Section */}
-          <div className="flex flex-col gap-3">
-            <label className="text-sm font-semibold text-zinc-300 ml-1">
-              Option 2: Manual Input JSON
-            </label>
-            {/* FIX: added w-full to container, absolute inset-0 to textarea */}
-            <div className="relative group h-[500px] w-full rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm focus-within:border-white/20 focus-within:bg-white/10 transition-colors overflow-hidden">
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center h-6">
+              <label className="text-sm font-medium text-zinc-300">
+                Option 2: Manual Input JSON
+              </label>
+            </div>
+            <div className="relative w-full h-[450px] rounded-xl bg-zinc-900/30 border border-zinc-800 focus-within:border-zinc-600 transition-colors overflow-hidden">
               <textarea
-                className="absolute inset-0 w-full h-full p-5 bg-transparent outline-none resize-none font-mono text-sm text-zinc-300 placeholder:text-zinc-600 custom-scrollbar"
+                className="absolute inset-0 w-full h-full p-5 bg-transparent outline-none resize-none font-mono text-sm text-zinc-300 placeholder:text-zinc-600 custom-scrollbar leading-relaxed"
                 placeholder='{\n  "message": "Hello World",\n  "status": 200\n}'
                 value={inputJson}
                 onChange={(e) => setInputJson(e.target.value)}
@@ -259,9 +291,9 @@ export default function Home() {
           </div>
 
           {/* Output Section */}
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between items-center ml-1">
-              <label className="text-sm font-semibold text-zinc-300">
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center h-6">
+              <label className="text-sm font-medium text-zinc-300">
                 Output Template
               </label>
               {error && (
@@ -270,23 +302,22 @@ export default function Home() {
                 </span>
               )}
             </div>
-            {/* FIX: added w-full to container, absolute inset-0 to pre block */}
-            <div className="relative group h-[500px] w-full rounded-2xl bg-[#0f0f0f] border border-white/5 shadow-inner overflow-hidden">
+            <div className="relative group w-full h-[450px] rounded-xl bg-zinc-950 border border-zinc-800 overflow-hidden">
               {/* Copy Button */}
               <button
                 onClick={handleCopy}
-                className={`absolute top-4 right-4 z-20 flex items-center justify-center p-2 rounded-lg backdrop-blur-md border transition-all duration-200 ${
+                className={`absolute top-3 right-3 z-20 flex items-center justify-center p-2 rounded-md transition-all duration-200 ${
                   isCopied
-                    ? "bg-green-500/20 border-green-500/30 text-green-400"
-                    : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100"
+                    ? "bg-zinc-800 text-zinc-100"
+                    : "bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 opacity-0 group-hover:opacity-100"
                 }`}
                 title="Copy to clipboard"
               >
                 {isCopied ? (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -299,8 +330,8 @@ export default function Home() {
                 ) : (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -321,7 +352,7 @@ export default function Home() {
                 )}
               </button>
 
-              <pre className="absolute inset-0 w-full h-full p-5 m-0 bg-transparent outline-none overflow-auto font-mono text-sm text-zinc-400 custom-scrollbar">
+              <pre className="absolute inset-0 w-full h-full p-5 m-0 bg-transparent outline-none overflow-auto font-mono text-sm text-zinc-400 custom-scrollbar leading-relaxed">
                 {outputTemplate ? (
                   <code
                     dangerouslySetInnerHTML={{ __html: highlightedOutput }}
@@ -336,16 +367,16 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+        {/* Generate Button for Manual Input */}
+        <div className="w-full flex justify-start mb-16">
           <button
             onClick={handleGenerate}
-            className="flex items-center justify-center gap-2 h-12 px-8 rounded-full bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 h-10 px-5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm font-medium hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -356,18 +387,18 @@ export default function Home() {
               <polyline points="16 18 22 12 16 6"></polyline>
               <polyline points="8 6 2 12 8 18"></polyline>
             </svg>
-            Generate Template from Manual Input
+            Generate from Manual Input
           </button>
         </div>
 
-        {/* Feature Cards */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left">
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 text-blue-400">
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full text-left">
+          <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/60 transition-colors group">
+            <div className="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center mb-4 text-zinc-300 border border-zinc-700/50 group-hover:border-zinc-600 transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -380,18 +411,19 @@ export default function Home() {
                 <path d="M3 12A9 3 0 0 0 21 12"></path>
               </svg>
             </div>
-            <h3 className="text-white font-semibold mb-2">Smart Inference</h3>
-            <p className="text-zinc-400 text-sm">
+            <h3 className="text-zinc-100 font-medium mb-2">Smart Inference</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">
               Automatically detects primitives, nested objects, and arrays to
               build accurate templates.
             </p>
           </div>
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mb-4 text-green-400">
+
+          <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/60 transition-colors group">
+            <div className="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center mb-4 text-zinc-300 border border-zinc-700/50 group-hover:border-zinc-600 transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -402,18 +434,19 @@ export default function Home() {
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
               </svg>
             </div>
-            <h3 className="text-white font-semibold mb-2">Instant Parsing</h3>
-            <p className="text-zinc-400 text-sm">
+            <h3 className="text-zinc-100 font-medium mb-2">Instant Parsing</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">
               Client-side execution ensures lightning-fast generation without
               sending data to a server.
             </p>
           </div>
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center mb-4 text-purple-400">
+
+          <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/60 transition-colors group">
+            <div className="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center mb-4 text-zinc-300 border border-zinc-700/50 group-hover:border-zinc-600 transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -425,14 +458,19 @@ export default function Home() {
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
             </div>
-            <h3 className="text-white font-semibold mb-2">Strictly Typed</h3>
-            <p className="text-zinc-400 text-sm">
+            <h3 className="text-zinc-100 font-medium mb-2">Strictly Typed</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">
               Creates clean structures ready to be used as TypeScript Interfaces
               or Types.
             </p>
           </div>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="z-10 w-full py-6 mt-16 border-t border-zinc-800/50 bg-zinc-950 text-center text-sm text-zinc-500 font-medium">
+        <p>&copy; {new Date().getFullYear()} waky.dev. All rights reserved.</p>
+      </footer>
     </div>
   );
 }

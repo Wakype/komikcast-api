@@ -8,33 +8,29 @@ export default function Legal() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace("#", "");
+      const hash = globalThis.location.hash.replace("#", "");
       if (hash) setActiveTab(hash);
     };
-    window.addEventListener("hashchange", handleHashChange);
+
+    globalThis.addEventListener("hashchange", handleHashChange);
     handleHashChange();
-    return () => window.removeEventListener("hashchange", handleHashChange);
+
+    return () => globalThis.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-300 relative overflow-x-hidden font-sans">
-      {/* Background Gradients */}
-      <div className="fixed inset-0 pointer-events-none z-0 flex justify-center items-center">
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-600/10 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-600/10 blur-[120px]" />
-      </div>
-
+    <div className="min-h-screen bg-zinc-950 text-zinc-300 relative overflow-x-hidden font-sans selection:bg-zinc-800">
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 h-16 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-white tracking-wide">
+            <h1 className="text-base font-semibold text-zinc-100 tracking-wide">
               Legal & Policy
             </h1>
           </div>
           <Link
             href="/"
-            className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/10 hover:bg-white/10"
+            className="text-sm font-medium text-zinc-400 hover:text-zinc-100 transition-colors flex items-center gap-2 bg-zinc-900 px-4 py-1.5 rounded-md border border-zinc-800 hover:bg-zinc-800"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -57,87 +53,48 @@ export default function Legal() {
       {/* Main Content */}
       <main className="relative z-10 pt-28 pb-20 max-w-6xl mx-auto px-6 flex flex-col md:flex-row gap-8 lg:gap-12">
         {/* Sidebar Navigation */}
-        <aside className="w-full md:w-64 shrink-0">
-          <div className="sticky top-28 flex flex-col gap-1.5 bg-[#0f0f0f]/80 border border-white/5 rounded-2xl p-4 backdrop-blur-md shadow-2xl">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-2">
-              Contents
+        <aside className="w-full md:w-64 shrink-0 md:sticky md:top-28">
+          <div className="flex flex-col gap-1.5 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 backdrop-blur-sm">
+            <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-2 px-2">
+              On this page
             </h3>
-            <a
-              href="#terms"
-              onClick={() => setActiveTab("terms")}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between group ${activeTab === "terms" ? "bg-white/10 text-white shadow-sm border border-white/10" : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
-            >
-              Terms of Service
-              <svg
-                className={`w-4 h-4 transition-transform ${activeTab === "terms" ? "opacity-100 translate-x-0 text-blue-400" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"}`}
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-            <a
-              href="#privacy"
-              onClick={() => setActiveTab("privacy")}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between group ${activeTab === "privacy" ? "bg-white/10 text-white shadow-sm border border-white/10" : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
-            >
-              Privacy Policy
-              <svg
-                className={`w-4 h-4 transition-transform ${activeTab === "privacy" ? "opacity-100 translate-x-0 text-green-400" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"}`}
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-            <a
-              href="#dmca"
-              onClick={() => setActiveTab("dmca")}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between group ${activeTab === "dmca" ? "bg-white/10 text-white shadow-sm border border-white/10" : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
-            >
-              DMCA Disclaimer
-              <svg
-                className={`w-4 h-4 transition-transform ${activeTab === "dmca" ? "opacity-100 translate-x-0 text-purple-400" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"}`}
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
+            <nav className="space-y-1">
+              {[
+                { id: "terms", label: "Terms of Service" },
+                { id: "privacy", label: "Privacy Policy" },
+                { id: "dmca", label: "DMCA Disclaimer" },
+              ].map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-between group ${
+                    activeTab === item.id
+                      ? "bg-zinc-100 text-zinc-950"
+                      : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                  }`}
+                >
+                  {item.label}
+                  {activeTab === item.id && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-950" />
+                  )}
+                </a>
+              ))}
+            </nav>
           </div>
         </aside>
 
         {/* Content Area */}
-        <div className="flex-1 bg-[#0f0f0f]/80 border border-white/5 rounded-3xl p-8 md:p-12 backdrop-blur-md shadow-2xl relative overflow-hidden">
-          {/* Subtle glow inside the content box */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 space-y-24">
+        <div className="flex-1 bg-zinc-900/30 border border-zinc-800 rounded-xl p-8 md:p-12 relative overflow-hidden">
+          <div className="relative z-10 space-y-20">
+            {/* Terms Section */}
             <section id="terms" className="scroll-mt-32">
               <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                <div className="p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-zinc-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
+                    width="22"
+                    height="22"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -152,18 +109,18 @@ export default function Legal() {
                     <polyline points="10 9 9 9 8 9"></polyline>
                   </svg>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                <h2 className="text-2xl md:text-3xl font-bold text-zinc-100 tracking-tight">
                   Terms of Service
                 </h2>
               </div>
-              <div className="space-y-6 text-zinc-400 leading-relaxed text-lg">
+              <div className="space-y-6 text-zinc-400 leading-relaxed text-base">
                 <p>
                   Welcome to the Komikcast Unofficial API. By accessing or using
                   our API, you agree to comply with and be bound by these Terms
                   of Service.
                 </p>
                 <div className="space-y-2 mt-8">
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-lg font-semibold text-zinc-100">
                     1. Usage Constraints
                   </h3>
                   <p>
@@ -174,7 +131,9 @@ export default function Legal() {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white">2. Liability</h3>
+                  <h3 className="text-lg font-semibold text-zinc-100">
+                    2. Liability
+                  </h3>
                   <p>
                     The creator of this API (waky.dev) shall not be held liable
                     for any misuse, copyright infringement, or damages arising
@@ -182,7 +141,7 @@ export default function Legal() {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-lg font-semibold text-zinc-100">
                     3. Service Availability
                   </h3>
                   <p>
@@ -194,13 +153,14 @@ export default function Legal() {
               </div>
             </section>
 
+            {/* Privacy Section */}
             <section id="privacy" className="scroll-mt-32">
               <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-400">
+                <div className="p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-zinc-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
+                    width="22"
+                    height="22"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -211,18 +171,18 @@ export default function Legal() {
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                   </svg>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                <h2 className="text-2xl md:text-3xl font-bold text-zinc-100 tracking-tight">
                   Privacy Policy
                 </h2>
               </div>
-              <div className="space-y-6 text-zinc-400 leading-relaxed text-lg">
+              <div className="space-y-6 text-zinc-400 leading-relaxed text-base">
                 <p>
                   Your privacy is important to us. This Privacy Policy outlines
                   how your information is handled when you use the Komikcast
                   Unofficial API.
                 </p>
                 <div className="space-y-2 mt-8">
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-lg font-semibold text-zinc-100">
                     Data Collection
                   </h3>
                   <p>
@@ -233,7 +193,7 @@ export default function Legal() {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-lg font-semibold text-zinc-100">
                     Analytics and Logs
                   </h3>
                   <p>
@@ -246,13 +206,14 @@ export default function Legal() {
               </div>
             </section>
 
+            {/* DMCA Section */}
             <section id="dmca" className="scroll-mt-32">
               <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                <div className="p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-zinc-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
+                    width="22"
+                    height="22"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -264,11 +225,11 @@ export default function Legal() {
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                   </svg>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                <h2 className="text-2xl md:text-3xl font-bold text-zinc-100 tracking-tight">
                   DMCA Disclaimer
                 </h2>
               </div>
-              <div className="space-y-6 text-zinc-400 leading-relaxed text-lg">
+              <div className="space-y-6 text-zinc-400 leading-relaxed text-base">
                 <p>
                   The Komikcast Unofficial API does not host, store, or
                   distribute any copyrighted material. This API operates
@@ -286,15 +247,17 @@ export default function Legal() {
                   website where the content is hosted. Since we do not host any
                   of the files, we cannot remove them from the internet.
                 </p>
-                <div className="mt-8 p-6 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4">
-                  <div className="p-2 rounded-full bg-white/10 shrink-0">
+
+                {/* Contact Box */}
+                <div className="mt-8 p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-start gap-4">
+                  <div className="p-2 rounded-md bg-zinc-800 text-zinc-300 shrink-0">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
+                      width="18"
+                      height="18"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="white"
+                      stroke="currentColor"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -303,10 +266,10 @@ export default function Legal() {
                     </svg>
                   </div>
                   <div>
-                    <strong className="text-white block mb-1">
+                    <strong className="text-zinc-100 block mb-1 font-semibold">
                       Contact for Inquiries
                     </strong>
-                    <p className="text-base text-zinc-400">
+                    <p className="text-sm text-zinc-400">
                       If you have any further legal inquiries regarding this API
                       project, you can contact the developer via the GitHub
                       repository linked on the home page.
@@ -319,7 +282,8 @@ export default function Legal() {
         </div>
       </main>
 
-      <footer className="z-10 w-full py-5 mt-10 border-t border-white/5 bg-black/40 backdrop-blur-md text-center text-sm text-zinc-500 font-medium">
+      {/* Footer */}
+      <footer className="z-10 w-full py-6 mt-auto border-t border-zinc-800/50 bg-zinc-950 text-center text-sm text-zinc-500 font-medium">
         <p>&copy; {new Date().getFullYear()} waky.dev. All rights reserved.</p>
       </footer>
     </div>

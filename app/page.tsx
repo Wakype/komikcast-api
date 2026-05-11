@@ -2,36 +2,40 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex flex-col w-full min-h-screen bg-[#0a0a0a] text-white overflow-hidden relative">
-      {/* Background Gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none" />
-
-      <main className="z-10 flex-1 flex flex-col items-center justify-center text-center px-4 py-12 max-w-4xl mx-auto w-full">
-        <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 text-sm font-medium border border-white/10 rounded-full bg-white/5 backdrop-blur-sm text-zinc-300">
-          <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+    <div className="flex flex-col w-full min-h-screen bg-zinc-950 text-zinc-50 font-sans selection:bg-zinc-800">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 max-w-5xl mx-auto w-full">
+        {/* Status Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-xs font-medium border border-zinc-800 rounded-full bg-zinc-900/50 text-zinc-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-500"></span>
+          </span>
           <span>Fast & Reliable Scraper API</span>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent">
+        {/* Hero Typography */}
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-zinc-100">
           Komikcast Unofficial API
         </h1>
 
-        <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl leading-relaxed">
+        <p className="text-base md:text-lg text-zinc-400 mb-10 max-w-2xl leading-relaxed">
           A powerful REST API for fetching manga data, chapters, and images.
           Built with Next.js App Router, Cheerio, and cached for high
           performance.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-center mb-20">
+          {/* Primary Action Button */}
           <Link
             href="/api"
-            className="flex items-center justify-center gap-2 h-12 px-8 rounded-full bg-white text-black font-semibold hover:bg-zinc-200 transition-colors"
+            className="flex items-center justify-center gap-2 h-11 px-6 rounded-md bg-zinc-100 text-zinc-950 font-medium hover:bg-white transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              width="18"
+              height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -44,16 +48,39 @@ export default function Home() {
             </svg>
             Check API
           </Link>
+
+          {/* Secondary Action Buttons */}
+          <Link
+            href="/template"
+            className="flex items-center justify-center gap-2 h-11 px-6 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-medium hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"></path>
+              <path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"></path>
+            </svg>
+            JSON to Template
+          </Link>
+
           <a
             href="https://github.com/Wakype/komikcast-api"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-12 px-8 rounded-full bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-colors"
+            className="flex items-center justify-center gap-2 h-11 px-6 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-medium hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              width="18"
+              height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -67,13 +94,15 @@ export default function Home() {
           </a>
         </div>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left">
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 text-blue-400">
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full text-left">
+          {/* Feature 1 */}
+          <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/60 transition-colors group">
+            <div className="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center mb-4 text-zinc-300 border border-zinc-700/50 group-hover:border-zinc-600 transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -86,18 +115,20 @@ export default function Home() {
                 <path d="M3 12A9 3 0 0 0 21 12"></path>
               </svg>
             </div>
-            <h3 className="text-white font-semibold mb-2">RESTful Design</h3>
-            <p className="text-zinc-400 text-sm">
+            <h3 className="text-zinc-100 font-medium mb-2">RESTful Design</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">
               Clean and intuitive endpoints for listing manga, genres, and
               reading chapters.
             </p>
           </div>
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mb-4 text-green-400">
+
+          {/* Feature 2 */}
+          <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/60 transition-colors group">
+            <div className="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center mb-4 text-zinc-300 border border-zinc-700/50 group-hover:border-zinc-600 transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -108,18 +139,20 @@ export default function Home() {
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
               </svg>
             </div>
-            <h3 className="text-white font-semibold mb-2">High Performance</h3>
-            <p className="text-zinc-400 text-sm">
+            <h3 className="text-zinc-100 font-medium mb-2">High Performance</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">
               Aggressive caching strategies to ensure fast response times and
               low server load.
             </p>
           </div>
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center mb-4 text-purple-400">
+
+          {/* Feature 3 */}
+          <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/60 transition-colors group">
+            <div className="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center mb-4 text-zinc-300 border border-zinc-700/50 group-hover:border-zinc-600 transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -131,8 +164,8 @@ export default function Home() {
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
             </div>
-            <h3 className="text-white font-semibold mb-2">Strictly Typed</h3>
-            <p className="text-zinc-400 text-sm">
+            <h3 className="text-zinc-100 font-medium mb-2">Strictly Typed</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">
               Built with TypeScript for reliable data structures and developer
               experience.
             </p>
@@ -140,9 +173,10 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="z-10 mt-auto w-full border-t border-white/5 bg-black/40 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* Footer Section */}
+      <footer className="w-full border-t border-zinc-800/50 bg-zinc-950">
+        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Author Credits */}
           <div className="flex items-center gap-3">
             <span className="text-sm text-zinc-500 font-medium">
               Powered by
@@ -151,12 +185,12 @@ export default function Home() {
               href="https://github.com/Wakype"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 text-white font-medium text-sm shadow-lg shadow-black/20"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors text-zinc-300 font-medium text-sm"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -169,22 +203,24 @@ export default function Home() {
               waky.dev
             </a>
           </div>
+
+          {/* Legal Links */}
           <div className="flex items-center gap-6 text-sm text-zinc-500 font-medium">
             <Link
               href="/legal#terms"
-              className="hover:text-white transition-colors"
+              className="hover:text-zinc-300 transition-colors"
             >
               Terms of Service
             </Link>
             <Link
               href="/legal#privacy"
-              className="hover:text-white transition-colors"
+              className="hover:text-zinc-300 transition-colors"
             >
               Privacy Policy
             </Link>
             <Link
               href="/legal#dmca"
-              className="hover:text-white transition-colors"
+              className="hover:text-zinc-300 transition-colors"
             >
               DMCA
             </Link>
