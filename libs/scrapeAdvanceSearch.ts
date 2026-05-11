@@ -5,7 +5,7 @@ import {
   PaginatedResponse,
 } from "@/types/manga";
 
-export async function scrapeFilterKomik(
+export async function scrapeAdvanceSearch(
   searchParams: URLSearchParams,
 ): Promise<PaginatedResponse<FilterKomik>> {
   // Transformation for search

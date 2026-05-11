@@ -3,6 +3,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { CollapsibleJson } from "@/components/CollapsibleJson";
+import {
+  CollapsibleTemplate,
+  getTypeTemplate,
+} from "@/components/CollapsibleTemplate";
+import { ApiOverview } from "@/components/ApiOverview";
 
 const endpoints = [
   {
@@ -12,6 +18,14 @@ const endpoints = [
     path: "/api/home",
     description: "Fetch banner, popular, and newest komik for the home page.",
     params: [],
+  },
+  {
+    id: "latest",
+    title: "Latest Komik",
+    method: "GET",
+    path: "/api/latest?page=[page]",
+    description: "Fetch the latest released komik with pagination.",
+    params: [{ name: "page", placeholder: "e.g., 1" }],
   },
   {
     id: "detail",
@@ -33,10 +47,10 @@ const endpoints = [
     ],
   },
   {
-    id: "filter",
-    title: "Filter Komik",
+    id: "advanceSearch",
+    title: "Advance Search Komik",
     method: "GET",
-    path: "/api/filter?page=[page]&take=[take]&sort=[sort]&sortOrder=[sortOrder]&status=[status]&format=[format]&genreIds=[genreIds]&search=[search]",
+    path: "/api/advanceSearch?page=[page]&take=[take]&sort=[sort]&sortOrder=[sortOrder]&status=[status]&format=[format]&genreIds=[genreIds]&search=[search]",
     description:
       "Filter and search komik. Status: ongoing, completed, hiatus, cancelled. Format: manga, manhwa, manhua, webtoon. Optional filters can be left empty.",
     params: [
@@ -74,6 +88,28 @@ const endpoints = [
     ],
   },
   {
+    id: "popular",
+    title: "Popular Categories",
+    method: "GET",
+    path: "/api/popular?category=[category]&take=[take]&page=[page]",
+    description: "Fetch popular komik by category.",
+    params: [
+      {
+        name: "category",
+        placeholder: "Select Category",
+        options: [
+          "best-manhwa",
+          "best-manhua",
+          "best-manga",
+          "anime-adaptations",
+          "trending",
+        ],
+      },
+      { name: "take", placeholder: "e.g., 10" },
+      { name: "page", placeholder: "e.g., 1" },
+    ],
+  },
+  {
     id: "genres",
     title: "Genres List",
     method: "GET",
@@ -83,84 +119,8 @@ const endpoints = [
   },
 ];
 
-// Helper syntax highlighting JSON with dark minimalist theme
-const syntaxHighlight = (json: any) => {
-  if (!json) return "";
-  const jsonStr =
-    typeof json === "string" ? json : JSON.stringify(json, null, 2);
-  return jsonStr.replaceAll(
-    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-    (match) => {
-      let cls = "text-blue-400"; // number
-      if (match.startsWith('"')) {
-        if (match.endsWith(":")) {
-          cls = "text-zinc-300"; // key / attribute
-        } else {
-          cls = "text-emerald-400"; // string
-        }
-      } else if (/true|false/.test(match)) {
-        cls = "text-blue-400"; // boolean
-      } else if (/null/.test(match)) {
-        cls = "text-zinc-500 italic"; // null
-      }
-      return `<span class="${cls}">${match}</span>`;
-    },
-  );
-};
-
-// Helper function to recursively determine the type of the value
-const getTypeTemplate = (value: any, indentLevel: number = 1): string => {
-  const indent = "  ".repeat(indentLevel);
-  const closingIndent = "  ".repeat(indentLevel - 1);
-
-  if (value === null) return "null";
-
-  if (Array.isArray(value)) {
-    if (value.length > 0) {
-      const elementType = getTypeTemplate(value[0], indentLevel);
-      return `${elementType}[]`;
-    }
-    return "any[]";
-  }
-
-  if (typeof value === "object") {
-    let result = "{\n";
-    for (const key in value) {
-      if (Object.hasOwn(value, key)) {
-        const formattedKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
-          ? key
-          : `"${key}"`;
-        result += `${indent}${formattedKey}: ${getTypeTemplate(
-          value[key],
-          indentLevel + 1,
-        )},\n`;
-      }
-    }
-    result += `${closingIndent}}`;
-    return result;
-  }
-
-  return typeof value;
-};
-
-// Simple syntax highlighter for the template
-const highlightTemplate = (template: string) => {
-  if (!template) return "";
-  return template
-    .replaceAll(/"([^"]+)"(?=:)/g, '<span class="text-zinc-300">"$1"</span>')
-    .replaceAll(
-      /([a-zA-Z_$][a-zA-Z0-9_$]*)(?=:)/g,
-      '<span class="text-zinc-300">$1</span>',
-    )
-    .replaceAll(
-      /:\s*(string|number|boolean|any|null)((\[])*)/g,
-      ': <span class="text-emerald-400">$1$2</span>',
-    )
-    .replaceAll(/([{}[\],])/g, '<span class="text-zinc-500">$1</span>');
-};
-
 export default function ApiDocs() {
-  const [activeEndpointId, setActiveEndpointId] = useState(endpoints[0].id);
+  const [activeEndpointId, setActiveEndpointId] = useState("overview");
   const [paramValues, setParamValues] = useState<Record<string, string>>({
     slug: "archamge-restaurant",
     chapterId: "132",
@@ -172,6 +132,7 @@ export default function ApiDocs() {
     format: "",
     genreIds: "",
     search: "",
+    category: "best-manhwa",
   });
   const [response, setResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -205,7 +166,7 @@ export default function ApiDocs() {
     fetchGenres();
   }, []);
 
-  const activeEndpoint = endpoints.find((e) => e.id === activeEndpointId)!;
+  const activeEndpoint = endpoints.find((e) => e.id === activeEndpointId);
 
   const handleParamChange = (name: string, value: string) => {
     setParamValues((prev) => ({ ...prev, [name]: value }));
@@ -225,6 +186,7 @@ export default function ApiDocs() {
   };
 
   const getRelativeUrl = () => {
+    if (!activeEndpoint) return "";
     let pathPart = activeEndpoint.path.split("?")[0];
     let queryPart = activeEndpoint.path.split("?")[1] || "";
 
@@ -240,7 +202,7 @@ export default function ApiDocs() {
             .join(`&${param.name}=`);
           queryPart = queryPart.replace(`[${param.name}]`, encodedVal);
         } else {
-          let encodedVal = encodeURIComponent(val).replaceAll("%20", "+");
+          const encodedVal = encodeURIComponent(val).replaceAll("%20", "+");
           queryPart = queryPart.replace(`[${param.name}]`, encodedVal);
         }
       }
@@ -279,7 +241,7 @@ export default function ApiDocs() {
     setError(null);
     setResponse(null);
 
-    for (const param of activeEndpoint.params) {
+    for (const param of activeEndpoint!.params) {
       if (
         !paramValues[param.name] &&
         ![
@@ -374,6 +336,42 @@ export default function ApiDocs() {
             <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-3">
               Endpoints
             </h3>
+
+            {/* Overview Shortcut */}
+            <button
+              onClick={() => {
+                setActiveEndpointId("overview");
+                setResponse(null);
+                setError(null);
+              }}
+              className={`relative cursor-pointer flex flex-col items-start p-3 rounded-md text-left transition-colors ${
+                activeEndpointId === "overview"
+                  ? "bg-zinc-800/50"
+                  : "hover:bg-zinc-900"
+              }`}
+            >
+              <div className="flex items-center gap-2 px-1 w-full">
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${
+                    activeEndpointId === "overview"
+                      ? "bg-purple-500/10 text-purple-400"
+                      : "bg-zinc-500/10 text-zinc-400"
+                  }`}
+                >
+                  INFO
+                </span>
+                <span
+                  className={`text-sm font-medium truncate ${
+                    activeEndpointId === "overview"
+                      ? "text-zinc-100"
+                      : "text-zinc-400"
+                  }`}
+                >
+                  Overview
+                </span>
+              </div>
+            </button>
+
             {endpoints.map((ep) => {
               const isActive = activeEndpointId === ep.id;
               return (
@@ -447,233 +445,44 @@ export default function ApiDocs() {
       <div className="z-10 flex-1 flex flex-col min-h-screen max-h-screen overflow-hidden bg-zinc-950">
         <div className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar">
           <div className="max-w-7xl mx-auto space-y-10 pb-20">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-xs font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    {activeEndpoint.method}
-                  </span>
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-100">
-                    {activeEndpoint.title}
-                  </h1>
-                </div>
-                <p className="text-zinc-400 text-base mb-6 leading-relaxed">
-                  {activeEndpoint.description}
-                </p>
-
-                {/* Base URL Info Badge */}
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-800 text-sm">
-                  <span className="text-zinc-500 font-medium">Base URL:</span>
-                  <code className="text-zinc-300 font-mono">{baseUrl}</code>
-                </div>
-              </div>
-
-              {/* Star on GitHub */}
-              <a
-                href="https://github.com/Wakype/komikcast-api"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-md bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-100 transition-colors text-zinc-300 text-sm font-medium"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                </svg>
-                Star on GitHub
-              </a>
-            </div>
-
-            {/* URL Display with Copy Button */}
-            <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-md p-1.5 overflow-hidden">
-              <div className="flex items-center flex-1 overflow-hidden">
-                <div className="flex-1 overflow-x-auto custom-scrollbar px-3 py-2">
-                  <span className="font-mono text-sm text-zinc-300 whitespace-nowrap">
-                    {getRelativeUrl()}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={handleCopyUrl}
-                title="Copy URL"
-                className="shrink-0 p-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
-              >
-                {copiedUrl ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-emerald-400"
-                  >
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect
-                      x="9"
-                      y="9"
-                      width="13"
-                      height="13"
-                      rx="2"
-                      ry="2"
-                    ></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                )}
-              </button>
-            </div>
-
-            {/* Parameters */}
-            {activeEndpoint.params.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
-                  Parameters
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 rounded-xl bg-zinc-900/30 border border-zinc-800">
-                  {activeEndpoint.params.map((param) => (
-                    <div key={param.name} className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-zinc-400 flex items-center gap-1">
-                        {param.name}
-                        {![
-                          "status",
-                          "format",
-                          "genreIds",
-                          "search",
-                          "sort",
-                          "sortOrder",
-                        ].includes(param.name) && (
-                          <span className="text-red-400" title="Required">
-                            *
-                          </span>
-                        )}
-                      </label>
-                      <div className="relative group">
-                        {(param as any).multi ? (
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {(
-                              (param.name === "genreIds"
-                                ? genresOptions
-                                : param.options) || []
-                            ).map((opt: string) => {
-                              const isSelected = (paramValues[param.name] || "")
-                                .split(",")
-                                .includes(opt);
-                              return (
-                                <button
-                                  key={opt}
-                                  type="button"
-                                  onClick={() =>
-                                    handleMultiSelectToggle(param.name, opt)
-                                  }
-                                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
-                                    isSelected
-                                      ? "bg-zinc-800 border-zinc-700 text-zinc-100"
-                                      : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300"
-                                  }`}
-                                >
-                                  {opt}
-                                </button>
-                              );
-                            })}
-                            {param.name === "genreIds" &&
-                              genresOptions.length === 0 && (
-                                <span className="text-xs text-zinc-500 py-1">
-                                  Loading genres...
-                                </span>
-                              )}
-                          </div>
-                        ) : param.options ? (
-                          <select
-                            value={paramValues[param.name] || ""}
-                            onChange={(e) =>
-                              handleParamChange(param.name, e.target.value)
-                            }
-                            className="w-full px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 focus:border-zinc-600 focus:bg-zinc-800/50 outline-none transition-colors font-mono text-sm appearance-none"
-                          >
-                            {param.options.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt === ""
-                                  ? "Any"
-                                  : opt.charAt(0).toUpperCase() + opt.slice(1)}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            placeholder={param.placeholder}
-                            value={paramValues[param.name] || ""}
-                            onChange={(e) =>
-                              handleParamChange(param.name, e.target.value)
-                            }
-                            className="w-full px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 placeholder:text-zinc-600 focus:border-zinc-600 focus:bg-zinc-800/50 outline-none transition-colors font-mono text-sm"
-                          />
-                        )}
-                      </div>
+            {activeEndpointId === "overview" ? (
+              <ApiOverview
+                endpoints={endpoints}
+                onSelectEndpoint={setActiveEndpointId}
+              />
+            ) : activeEndpoint ? (
+              <>
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-xs font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {activeEndpoint.method}
+                      </span>
+                      <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-100">
+                        {activeEndpoint.title}
+                      </h1>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <p className="text-zinc-400 text-base mb-6 leading-relaxed max-w-lg">
+                      {activeEndpoint.description}
+                    </p>
 
-            {/* Actions */}
-            <div className="pt-2 flex flex-col md:flex-row items-center gap-4">
-              <button
-                onClick={handleTestApi}
-                disabled={isLoading}
-                className="h-11 px-6 cursor-pointer rounded-md bg-zinc-100 text-zinc-950 font-medium hover:bg-white disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 w-full md:w-auto"
-              >
-                {isLoading ? (
-                  <>
-                    <svg
-                      className="animate-spin h-4 w-4 text-current"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    <span>Fetching...</span>
-                  </>
-                ) : (
-                  <>
+                    {/* Base URL Info Badge */}
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-800 text-sm">
+                      <span className="text-zinc-500 font-medium">
+                        Base URL:
+                      </span>
+                      <code className="text-zinc-300 font-mono">{baseUrl}</code>
+                    </div>
+                  </div>
+
+                  {/* Star on GitHub */}
+                  <a
+                    href="https://github.com/Wakype/komikcast-api"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-md bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-100 transition-colors text-zinc-300 text-sm font-medium"
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
@@ -685,230 +494,429 @@ export default function ApiDocs() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
-                    <span>Send Request</span>
-                  </>
-                )}
-              </button>
-              {error && (
-                <div className="flex items-center gap-2 text-red-400">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  <p className="text-sm font-medium">{error}</p>
+                    Star on GitHub
+                  </a>
                 </div>
-              )}
-            </div>
 
-            {/* Response Section */}
-            <div className="space-y-4 pt-6 border-t border-zinc-800">
-              <h3 className="text-lg font-semibold text-zinc-100">Response</h3>
-
-              {/* Resizable Box */}
-              <div className="rounded-lg bg-zinc-950 border border-zinc-800 flex flex-col resize-y overflow-hidden min-h-[250px] h-[500px]">
-                {/* Editor Header */}
-                <div className="shrink-0 flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-zinc-400">
-                      response.json
-                    </span>
+                {/* URL Display with Copy Button */}
+                <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-md p-1.5 overflow-hidden">
+                  <div className="flex items-center flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-x-auto custom-scrollbar px-3 py-2">
+                      <span className="font-mono text-sm text-zinc-300 whitespace-nowrap">
+                        {getRelativeUrl()}
+                      </span>
+                    </div>
                   </div>
-
-                  {response && (
-                    <button
-                      onClick={handleCopyResponse}
-                      className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded-md hover:bg-zinc-800"
-                    >
-                      {copiedResponse ? (
-                        <>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-zinc-100"
-                          >
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                          <span className="text-zinc-100">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <rect
-                              x="9"
-                              y="9"
-                              width="13"
-                              height="13"
-                              rx="2"
-                              ry="2"
-                            ></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                          </svg>
-                          Copy
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-
-                {/* Editor Body */}
-                <div className="relative flex-1 w-full bg-zinc-950">
-                  {response ? (
-                    <pre
-                      className="absolute inset-0 w-full h-full p-4 m-0 bg-transparent outline-none overflow-auto font-mono text-[13px] leading-relaxed custom-scrollbar"
-                      dangerouslySetInnerHTML={{
-                        __html: syntaxHighlight(response),
-                      }}
-                    />
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-zinc-600 space-y-3">
+                  <button
+                    onClick={handleCopyUrl}
+                    title="Copy URL"
+                    className="shrink-0 p-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+                  >
+                    {copiedUrl ? (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="1.5"
+                        strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="opacity-50"
+                        className="text-emerald-400"
                       >
-                        <polyline points="16 18 22 12 16 6"></polyline>
-                        <polyline points="8 6 2 12 8 18"></polyline>
+                        <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
-                      <span className="text-sm">
-                        Click &quot;Send Request&quot; to fetch data...
-                      </span>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect
+                          x="9"
+                          y="9"
+                          width="13"
+                          height="13"
+                          rx="2"
+                          ry="2"
+                        ></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+
+                {/* Parameters */}
+                {activeEndpoint.params.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
+                      Parameters
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 rounded-xl bg-zinc-900/30 border border-zinc-800">
+                      {activeEndpoint.params.map((param) => (
+                        <div key={param.name} className="flex flex-col gap-2">
+                          <label className="text-sm font-medium text-zinc-400 flex items-center gap-1">
+                            {param.name}
+                            {![
+                              "status",
+                              "format",
+                              "genreIds",
+                              "search",
+                              "sort",
+                              "sortOrder",
+                            ].includes(param.name) && (
+                              <span className="text-red-400" title="Required">
+                                *
+                              </span>
+                            )}
+                          </label>
+                          <div className="relative group">
+                            {(param as any).multi ? (
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {(
+                                  (param.name === "genreIds"
+                                    ? genresOptions
+                                    : param.options) || []
+                                ).map((opt: string) => {
+                                  const isSelected = (
+                                    paramValues[param.name] || ""
+                                  )
+                                    .split(",")
+                                    .includes(opt);
+                                  return (
+                                    <button
+                                      key={opt}
+                                      type="button"
+                                      onClick={() =>
+                                        handleMultiSelectToggle(param.name, opt)
+                                      }
+                                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                                        isSelected
+                                          ? "bg-zinc-800 border-zinc-700 text-zinc-100"
+                                          : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300"
+                                      }`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  );
+                                })}
+                                {param.name === "genreIds" &&
+                                  genresOptions.length === 0 && (
+                                    <span className="text-xs text-zinc-500 py-1">
+                                      Loading genres...
+                                    </span>
+                                  )}
+                              </div>
+                            ) : param.options ? (
+                              <select
+                                value={paramValues[param.name] || ""}
+                                onChange={(e) =>
+                                  handleParamChange(param.name, e.target.value)
+                                }
+                                className="w-full px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 focus:border-zinc-600 focus:bg-zinc-800/50 outline-none transition-colors font-mono text-sm appearance-none"
+                              >
+                                {param.options.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt === ""
+                                      ? "Any"
+                                      : opt.charAt(0).toUpperCase() +
+                                        opt.slice(1)}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                placeholder={param.placeholder}
+                                value={paramValues[param.name] || ""}
+                                onChange={(e) =>
+                                  handleParamChange(param.name, e.target.value)
+                                }
+                                className="w-full px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 placeholder:text-zinc-600 focus:border-zinc-600 focus:bg-zinc-800/50 outline-none transition-colors font-mono text-sm"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="pt-2 flex flex-col md:flex-row items-center gap-4">
+                  <button
+                    onClick={handleTestApi}
+                    disabled={isLoading}
+                    className="h-11 px-6 cursor-pointer rounded-md bg-zinc-100 text-zinc-950 font-medium hover:bg-white disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 w-full md:w-auto"
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4 text-current"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span>Fetching...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <line x1="22" y1="2" x2="11" y2="13"></line>
+                          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        <span>Send Request</span>
+                      </>
+                    )}
+                  </button>
+                  {error && (
+                    <div className="flex items-center gap-2 text-red-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      <p className="text-sm font-medium">{error}</p>
                     </div>
                   )}
                 </div>
-              </div>
-              <p className="text-xs text-zinc-500 text-right mt-2">
-                * You can drag the bottom right corner of the box to resize.
-              </p>
-            </div>
 
-            {/* Template Generator Section */}
-            {response && (
-              <div className="space-y-4 pt-6 border-t border-zinc-800">
-                <h3 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
-                  JSON Template
-                  <Link
-                    href="/template"
-                    className="ml-2 text-xs font-medium px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-100 transition-colors"
-                  >
-                    Open JSON to Template Tool
-                  </Link>
-                </h3>
+                {/* Response Section */}
+                <div className="space-y-4 pt-6 border-t border-zinc-800">
+                  <h3 className="text-lg font-semibold text-zinc-100">
+                    Response
+                  </h3>
 
-                {/* Resizable Box */}
-                <div className="rounded-lg bg-zinc-950 border border-zinc-800 flex flex-col resize-y overflow-hidden min-h-[150px] h-[300px]">
-                  {/* Editor Header */}
-                  <div className="shrink-0 flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-zinc-400">
-                        types.ts
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const tpl = getTypeTemplate(response);
-                        navigator.clipboard.writeText(tpl);
-                        setCopiedTemplate(true);
-                        setTimeout(() => setCopiedTemplate(false), 2000);
-                      }}
-                      className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded-md hover:bg-zinc-800"
-                    >
-                      {copiedTemplate ? (
-                        <>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-zinc-100"
-                          >
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                          <span className="text-zinc-100">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <rect
-                              x="9"
-                              y="9"
-                              width="13"
-                              height="13"
-                              rx="2"
-                              ry="2"
-                            ></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                          </svg>
-                          Copy
-                        </>
+                  {/* Resizable Box */}
+                  <div className="rounded-lg bg-zinc-950 border border-zinc-800 flex flex-col resize-y overflow-hidden min-h-[250px] h-[500px]">
+                    {/* Editor Header */}
+                    <div className="shrink-0 flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-zinc-400">
+                          response.json
+                        </span>
+                      </div>
+
+                      {response && (
+                        <button
+                          onClick={handleCopyResponse}
+                          className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded-md hover:bg-zinc-800"
+                        >
+                          {copiedResponse ? (
+                            <>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="text-zinc-100"
+                              >
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                              <span className="text-zinc-100">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <rect
+                                  x="9"
+                                  y="9"
+                                  width="13"
+                                  height="13"
+                                  rx="2"
+                                  ry="2"
+                                ></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                              Copy
+                            </>
+                          )}
+                        </button>
                       )}
-                    </button>
-                  </div>
+                    </div>
 
-                  {/* Editor Body */}
-                  <div className="relative flex-1 w-full bg-zinc-950">
-                    <pre
-                      className="absolute inset-0 w-full h-full p-4 m-0 bg-transparent outline-none overflow-auto font-mono text-[13px] leading-relaxed custom-scrollbar"
-                      dangerouslySetInnerHTML={{
-                        __html: highlightTemplate(getTypeTemplate(response)),
-                      }}
-                    />
+                    {/* Editor Body */}
+                    <div className="relative flex-1 w-full bg-zinc-950">
+                      {response ? (
+                        <pre className="absolute inset-0 w-full h-full p-4 m-0 bg-transparent outline-none overflow-auto font-mono text-[13px] leading-relaxed custom-scrollbar">
+                          <CollapsibleJson data={response} />
+                        </pre>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-zinc-600 space-y-3">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="opacity-50"
+                          >
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                          </svg>
+                          <span className="text-sm">
+                            Click &quot;Send Request&quot; to fetch data...
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  <p className="text-xs text-zinc-500 text-right mt-2">
+                    * You can drag the bottom right corner of the box to resize.
+                  </p>
                 </div>
-              </div>
-            )}
+
+                {/* Template Generator Section */}
+                {response && (
+                  <div className="space-y-4 pt-6 border-t border-zinc-800">
+                    <h3 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
+                      JSON Template
+                      <Link
+                        href="/template"
+                        className="ml-2 text-xs font-medium px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-100 transition-colors"
+                      >
+                        Open JSON to Template Tool
+                      </Link>
+                    </h3>
+
+                    {/* Resizable Box */}
+                    <div className="rounded-lg bg-zinc-950 border border-zinc-800 flex flex-col resize-y overflow-hidden min-h-[150px] h-[300px]">
+                      {/* Editor Header */}
+                      <div className="shrink-0 flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-zinc-400">
+                            types.ts
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const tpl = getTypeTemplate(response);
+                            navigator.clipboard.writeText(tpl);
+                            setCopiedTemplate(true);
+                            setTimeout(() => setCopiedTemplate(false), 2000);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded-md hover:bg-zinc-800"
+                        >
+                          {copiedTemplate ? (
+                            <>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="text-zinc-100"
+                              >
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                              <span className="text-zinc-100">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <rect
+                                  x="9"
+                                  y="9"
+                                  width="13"
+                                  height="13"
+                                  rx="2"
+                                  ry="2"
+                                ></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                              Copy
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Editor Body */}
+                      <div className="relative flex-1 w-full bg-zinc-950">
+                        <pre className="absolute inset-0 w-full h-full p-4 m-0 bg-transparent outline-none overflow-auto font-mono text-[13px] leading-relaxed custom-scrollbar">
+                          <CollapsibleTemplate data={response} />
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
         </div>
       </div>

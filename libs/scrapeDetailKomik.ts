@@ -51,12 +51,16 @@ export async function scrapeDetailKomik(slug: string) {
     type: item.data.type || "",
     isHot: item.data.isHot,
     isRecommended: item.data.isRecommended,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
+    isAnimeAdapted: item.data.animeAdaptation,
     author: item.data.author || "",
     format: item.data.format || "",
     nativeTitle: item.data.nativeTitle || "",
     releaseDate: item.data.releaseDate || "",
+    synopsis: item.data.synopsis || "",
+    totalChapters: item.data.totalChapters || "0",
+    status: item.data.status || "",
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
     genres: (item.data.genres || []).map((g) => ({
       id: g.id,
       data: {
@@ -66,9 +70,6 @@ export async function scrapeDetailKomik(slug: string) {
       createdAt: g.createdAt,
       updatedAt: g.updatedAt,
     })),
-    synopsis: item.data.synopsis || "",
-    totalChapters: item.data.totalChapters || "0",
-    status: item.data.status || "",
     readChapter: (chapRes.data || []).map((ch) => ({
       id: ch.id,
       chapterIndex: ch.data.index,

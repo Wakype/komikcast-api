@@ -27,12 +27,13 @@
 
 Base URL: `https://your-deployment.vercel.app`
 
-| Method | Endpoint                      | Description                                       | Cache  |
-| ------ | ----------------------------- | ------------------------------------------------- | ------ |
-| `GET`  | `/api/home`                   | Home data — banner, popular, latest, newest manga | 5 min  |
-| `GET`  | `/api/komik/:slug`            | Manga detail — synopsis, genres, chapter list     | 30 min |
-| `GET`  | `/api/komik/:slug/:chapterId` | Chapter images & prev/next navigation             | 7 days |
-| `GET`  | `/api/proxy?url=...`          | Image proxy — bypasses hotlinking restrictions    | 1 year |
+| Method                                                                        | Endpoint                      | Description                                       | Cache  |
+| ----------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------- | ------ |
+| `GET`                                                                         | `/api/home`                   | Home data — banner, popular, latest, newest manga | 5 min  |
+| `GET`                                                                         | `/api/komik/:slug`            | Manga detail — synopsis, genres, chapter list     | 30 min |
+| `GET`                                                                         | `/api/komik/:slug/:chapterId` | Chapter images & prev/next navigation             | 7 days |
+| `GET`                                                                         | `/api/proxy?url=...`          | Image proxy — bypasses hotlinking restrictions    | 1 year |
+| Check more in <a href="https://komikcast-api-six.vercel.app/api">API Docs</a> |
 
 ### Response Format
 

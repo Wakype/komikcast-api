@@ -91,6 +91,7 @@ export interface ReadChapterContent {
 export interface DetailKomik extends Omit<PopularKomik, "chapters"> {
   synopsis: string;
   totalChapters: string;
+  isAnimeAdapted: boolean;
   status: string;
   readChapter: ReadChapter[];
   recommended: RecommendedKomik[];
@@ -222,6 +223,7 @@ export interface KomikcastMeta {
   total: number;
   page: number;
   lastPage: number;
+  take?: number;
 }
 
 export interface KomikcastResponse<T = KomikcastSeriesItem[]> {
@@ -291,3 +293,31 @@ export interface FilterKomik {
 
 export type KomikcastFilterResponse = KomikcastResponse;
 export type KomikcastGenresResponse = KomikcastResponse<KomikcastGenre[]>;
+
+export interface PopularCategoryItem {
+  id: number;
+  data: {
+    slug: string;
+    type: string;
+    isHot: boolean;
+    title: string;
+    author: string;
+    format: string;
+    rating: number;
+    status: string;
+    genreIds: number[];
+    coverImage: string;
+    animeStatus: string | null;
+    nativeTitle: string;
+    totalChapters: string;
+    animeAdaptation: boolean;
+    backgroundImage: string;
+    genres: KomikcastGenre[];
+  };
+  createdAt: string;
+  updatedAt: string;
+  weightedScore: string | null;
+  priorityScore: number | null;
+}
+
+export type PopularCategoryResponse = KomikcastResponse<PopularCategoryItem[]>;
