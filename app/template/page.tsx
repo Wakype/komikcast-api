@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import Squares from "@/components/Squares";
 
 export default function TemplateGenerator() {
   const [apiUrl, setApiUrl] = useState<string>("");
@@ -144,6 +145,17 @@ export default function TemplateGenerator() {
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-zinc-950 text-zinc-50 relative pt-16 font-sans selection:bg-zinc-800">
+      {/* Animated Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Squares
+          speed={0.1}
+          squareSize={70}
+          direction="diagonal"
+          borderColor="#18181b"
+          hoverFillColor="#27272a"
+        />
+      </div>
+
       {/* Custom Scrollbar Styles for Textarea and Pre */}
       <style
         dangerouslySetInnerHTML={{
@@ -469,7 +481,9 @@ export default function TemplateGenerator() {
 
       {/* Footer */}
       <footer className="z-10 w-full py-6 mt-16 border-t border-zinc-800/50 bg-zinc-950 text-center text-sm text-zinc-500 font-medium">
-        <p>&copy; {new Date().getFullYear()} waky.dev. All rights reserved.</p>
+        <p>
+          &copy; {new Date().getFullYear()} waky.dev || All rights reserved.
+        </p>
       </footer>
     </div>
   );

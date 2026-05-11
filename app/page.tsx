@@ -1,10 +1,22 @@
 import Link from "next/link";
+import Squares from "@/components/Squares";
 
 export default function Home() {
   return (
-    <div className="flex flex-col w-full min-h-screen bg-zinc-950 text-zinc-50 font-sans selection:bg-zinc-800">
+    <div className="relative flex flex-col w-full min-h-screen bg-zinc-950 text-zinc-50 font-sans selection:bg-zinc-800">
+      {/* Animated Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Squares
+          speed={0.1}
+          squareSize={70}
+          direction="diagonal"
+          borderColor="#18181b"
+          hoverFillColor="#27272a"
+        />
+      </div>
+
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 max-w-5xl mx-auto w-full">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 py-20 max-w-5xl mx-auto w-full">
         {/* Status Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-xs font-medium border border-zinc-800 rounded-full bg-zinc-900/50 text-zinc-400">
           <span className="relative flex h-2 w-2">
@@ -174,8 +186,8 @@ export default function Home() {
       </main>
 
       {/* Footer Section */}
-      <footer className="w-full border-t border-zinc-800/50 bg-zinc-950">
-        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="relative z-10 w-full border-t border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm">
+        <div className="max-w-5xl mx-auto px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Author Credits */}
           <div className="flex items-center gap-3">
             <span className="text-sm text-zinc-500 font-medium">
