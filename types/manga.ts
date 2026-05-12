@@ -3,6 +3,7 @@ export interface PaginatedResponse<T> {
   page: number;
   hasNextPage: boolean;
   data: T[];
+  meta?: KomikcastMeta;
 }
 
 export interface HeroKomik {

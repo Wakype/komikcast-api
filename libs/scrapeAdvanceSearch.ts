@@ -74,10 +74,16 @@ export async function scrapeAdvanceSearch(
 
   const page = res.meta?.page || 1;
   const lastPage = res.meta?.lastPage || 1;
+  const meta = res.meta || {
+    total: data.length,
+    page: page,
+    lastPage: 1,
+  };
 
   return {
     page,
     hasNextPage: page < lastPage,
+    meta,
     data,
   };
 }
