@@ -1,11 +1,13 @@
 import * as cheerio from "cheerio";
 
 const BASE_URL = process.env.MANGA_BASE_URL!;
-// Optional: URL of the Cloudflare Worker proxy
-// e.g., "https://your-worker.your-subdomain.workers.dev"
-const PROXY_URL = process.env.SCRAPER_PROXY_URL;
-// Optional: Secret key to bypass rate limiting on the CF Worker
 const BYPASS_SECRET = process.env.BYPASS_SECRET;
+
+const PROXY_URLS: string[] = [
+  process.env.SCRAPER_PROXY_URL,
+  process.env.SCRAPER_PROXY_URL_2,
+  process.env.SCRAPER_PROXY_URL_3,
+].filter((url): url is string => typeof url === "string" && url.length > 0);
 
 const defaultHeaders: Record<string, string> = {
   "User-Agent":
@@ -29,37 +31,66 @@ function getDirectUrl(path: string) {
 }
 
 /**
+ * Try fetching via a specific proxy URL.
+ * Returns the Response, or throws if failed.
+ */
+async function fetchViaProxy(
+  proxyUrl: string,
+  directUrl: string,
+): Promise<Response> {
+  const url = `${proxyUrl.replace(/\/$/, "")}/?url=${encodeURIComponent(directUrl)}`;
+  const headers: Record<string, string> = {};
+
+  if (BYPASS_SECRET) {
+    headers["X-Bypass-Key"] = BYPASS_SECRET;
+  }
+
+  const response = await fetch(url, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Proxy fetch failed with status ${response.status} for ${directUrl}`,
+    );
+  }
+
+  return response;
+}
+
+/**
  * Fetch raw data from the target site.
- * If SCRAPER_PROXY_URL is set, routes the request through the Cloudflare Worker proxy.
- * Otherwise, fetches directly (works locally, blocked on Vercel by Cloudflare).
+ * - If multiple SCRAPER_PROXY_URL_* are set, tries a random one first,
+ *   then falls back to the others before giving up.
+ * - If no proxy is configured, fetches directly (works locally).
  */
 async function rawFetch(path: string): Promise<Response> {
   const directUrl = getDirectUrl(path);
 
-  if (PROXY_URL) {
-    // Route through Cloudflare Worker proxy
-    const proxyUrl = `${PROXY_URL.replace(/\/$/, "")}/?url=${encodeURIComponent(directUrl)}`;
-    const proxyHeaders: Record<string, string> = {};
+  if (PROXY_URLS.length > 0) {
+    // Shuffle proxy list so each request tries a different order
+    const shuffled = [...PROXY_URLS].sort(() => Math.random() - 0.5);
 
-    // Send bypass key so our own API is never rate-limited
-    if (BYPASS_SECRET) {
-      proxyHeaders["X-Bypass-Key"] = BYPASS_SECRET;
+    let lastError: Error | null = null;
+
+    for (const proxyUrl of shuffled) {
+      try {
+        const response = await fetchViaProxy(proxyUrl, directUrl);
+        return response;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.warn(
+          `[scraper] Proxy ${proxyUrl} failed for ${directUrl}: ${lastError.message}. Trying next...`,
+        );
+      }
     }
 
-    const response = await fetch(proxyUrl, {
-      headers: proxyHeaders,
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Proxy fetch failed with status ${response.status} for ${directUrl}`
-      );
-    }
-    return response;
+    // All proxies failed
+    throw lastError ?? new Error(`All proxies failed for ${directUrl}`);
   }
 
-  // Direct fetch (works locally)
+  // Direct fetch (works locally, blocked on Vercel by Cloudflare)
   const response = await fetch(directUrl, {
     method: "GET",
     headers: defaultHeaders,
@@ -68,9 +99,10 @@ async function rawFetch(path: string): Promise<Response> {
 
   if (!response.ok) {
     throw new Error(
-      `Direct fetch failed with status ${response.status} for ${directUrl}`
+      `Direct fetch failed with status ${response.status} for ${directUrl}`,
     );
   }
+
   return response;
 }
 
