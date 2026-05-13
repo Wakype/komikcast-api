@@ -1,15 +1,18 @@
 import { NextRequest } from "next/server";
 import { ok, err } from "@/utils/response";
-import { cacheHeader, CACHE_TTL } from "@/utils/cache";
+import { cacheHeader, CACHE_TTL, withCache } from "@/utils/cache";
 import { scrapeDetailKomik } from "@/libs/scrapeDetailKomik";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
-    const data = await scrapeDetailKomik(slug);
+    // const data = await scrapeDetailKomik(slug);
+    const data = await withCache(`komik:${slug}`, CACHE_TTL.MEDIUM, () =>
+      scrapeDetailKomik(slug),
+    );
 
     return ok(data, {
       headers: { "Cache-Control": cacheHeader(CACHE_TTL.MEDIUM) },

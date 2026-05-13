@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { scrapePopular } from "@/libs/scrapePopular";
 import { ok, err } from "@/utils/response";
-import { cacheHeader, CACHE_TTL } from "@/utils/cache";
+import { cacheHeader, CACHE_TTL, withCache } from "@/utils/cache";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +17,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const data = await scrapePopular(category, take, page);
+    // const data = await scrapePopular(category, take, page);
+    const data = await withCache(
+      `popular:${category}:${take}:${page}`,
+      CACHE_TTL.SHORT,
+      () => scrapePopular(category, take, page),
+    );
 
     return ok(data, {
       headers: { "Cache-Control": cacheHeader(CACHE_TTL.SHORT) },

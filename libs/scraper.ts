@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 
 const BASE_URL = process.env.MANGA_BASE_URL!;
 const BYPASS_SECRET = process.env.BYPASS_SECRET;
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 
 const PROXY_URLS: string[] = [
   process.env.SCRAPER_PROXY_URL,
@@ -26,14 +27,68 @@ const defaultHeaders: Record<string, string> = {
   Origin: BASE_URL.replace(/\/$/, ""),
 };
 
+// ─── ScraperAPI usage counter ─────────────────────────────────────────────────
+
+// Per-instance counter — reset saat cold start, tapi cukup untuk deteksi lonjakan
+let scraperApiCallCount = 0;
+
+const SCRAPER_API_QUOTA = 5_000;
+const SCRAPER_API_WARN_AT = 4_000; // warn di 80%
+
+function trackScraperApiCall() {
+  scraperApiCallCount++;
+
+  if (scraperApiCallCount === SCRAPER_API_WARN_AT) {
+    console.warn(
+      `[scraper] ⚠️  ScraperAPI calls this instance hit ${scraperApiCallCount} — mendekati quota ${SCRAPER_API_QUOTA}/bulan. Pantau dashboard ScraperAPI.`,
+    );
+  }
+
+  if (scraperApiCallCount % 500 === 0) {
+    console.log(
+      `[scraper] ScraperAPI calls this instance: ${scraperApiCallCount}`,
+    );
+  }
+}
+
+// ─── Fetch strategies ─────────────────────────────────────────────────────────
+
 function getDirectUrl(path: string) {
   return `${BASE_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 }
 
-/**
- * Try fetching via a specific proxy URL.
- * Returns the Response, or throws if failed.
- */
+async function fetchViaScraperAPI(directUrl: string): Promise<Response> {
+  const params = new URLSearchParams({
+    api_key: SCRAPER_API_KEY!,
+    url: directUrl,
+    render: "false",
+    country_code: "id",
+  });
+
+  const response = await fetch(
+    `https://api.scraperapi.com?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        "User-Agent": defaultHeaders["User-Agent"],
+        Accept: defaultHeaders["Accept"],
+        "Accept-Language": defaultHeaders["Accept-Language"],
+        Referer: defaultHeaders["Referer"],
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `ScraperAPI failed with status ${response.status} for ${directUrl}`,
+    );
+  }
+
+  trackScraperApiCall();
+  return response;
+}
+
 async function fetchViaProxy(
   proxyUrl: string,
   directUrl: string,
@@ -59,25 +114,29 @@ async function fetchViaProxy(
   return response;
 }
 
-/**
- * Fetch raw data from the target site.
- * - If multiple SCRAPER_PROXY_URL_* are set, tries a random one first,
- *   then falls back to the others before giving up.
- * - If no proxy is configured, fetches directly (works locally).
- */
 async function rawFetch(path: string): Promise<Response> {
   const directUrl = getDirectUrl(path);
 
-  if (PROXY_URLS.length > 0) {
-    // Shuffle proxy list so each request tries a different order
-    const shuffled = [...PROXY_URLS].sort(() => Math.random() - 0.5);
+  // 1. ScraperAPI
+  if (SCRAPER_API_KEY) {
+    try {
+      return await fetchViaScraperAPI(directUrl);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[scraper] ScraperAPI failed for ${directUrl}: ${msg}. Falling back to proxy...`,
+      );
+    }
+  }
 
+  // 2. Custom proxy
+  if (PROXY_URLS.length > 0) {
+    const shuffled = [...PROXY_URLS].sort(() => Math.random() - 0.5);
     let lastError: Error | null = null;
 
     for (const proxyUrl of shuffled) {
       try {
-        const response = await fetchViaProxy(proxyUrl, directUrl);
-        return response;
+        return await fetchViaProxy(proxyUrl, directUrl);
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
         console.warn(
@@ -86,11 +145,10 @@ async function rawFetch(path: string): Promise<Response> {
       }
     }
 
-    // All proxies failed
     throw lastError ?? new Error(`All proxies failed for ${directUrl}`);
   }
 
-  // Direct fetch (works locally, blocked on Vercel by Cloudflare)
+  // 3. Direct fetch (local only)
   const response = await fetch(directUrl, {
     method: "GET",
     headers: defaultHeaders,
@@ -105,6 +163,8 @@ async function rawFetch(path: string): Promise<Response> {
 
   return response;
 }
+
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function fetchAPI(path: string) {
   const response = await rawFetch(path);
